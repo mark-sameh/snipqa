@@ -2154,6 +2154,124 @@ export default defineConfig({
   );
 });`,
   },
+
+  // ── PLAYWRIGHT (continued) ────────────────────────────────────
+  {
+    id: "pw-051",
+    title: "Wait for network idle",
+    description: "Hold execution until all in-flight network requests have settled — useful before screenshots or complex assertions.",
+    framework: "playwright",
+    category: "wait",
+    tags: ["networkidle", "waitForLoadState", "network", "settle"],
+    language: "typescript",
+    code: `test('waits for all requests to settle before asserting', async ({ page }) => {
+  await page.goto('/reports');
+
+  // 'networkidle' waits until there are no requests for at least 500 ms
+  await page.waitForLoadState('networkidle');
+
+  // Safe to assert — all async data has finished loading
+  await expect(page.getByTestId('report-table')).toBeVisible();
+  await expect(page.locator('table tbody tr')).not.toHaveCount(0);
+});`,
+  },
+  {
+    id: "pw-052",
+    title: "Assert page has no console errors",
+    description: "Collect browser console messages during a test and fail if any errors were logged.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["console", "errors", "debug", "page.on", "msg"],
+    language: "typescript",
+    code: `test('home page logs no console errors', async ({ page }) => {
+  const errors: string[] = [];
+
+  // Capture every console message before navigating
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      errors.push(msg.text());
+    }
+  });
+
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+
+  // Fail the test and print each offending message
+  expect(errors, \`Console errors: \${errors.join(', ')}\`).toHaveLength(0);
+});`,
+  },
+
+  // ── CYPRESS (continued) ──────────────────────────────────────
+  {
+    id: "cy-046",
+    title: "Intercept and modify a response body",
+    description: "Intercept a real API response and overwrite specific fields before they reach the app.",
+    framework: "cypress",
+    category: "network",
+    tags: ["intercept", "modify", "response", "body", "req.reply"],
+    language: "javascript",
+    code: `it('shows an overdue badge when API returns an overdue status', () => {
+  cy.intercept('GET', '/api/tasks', (req) => {
+    req.reply((res) => {
+      // Mutate a single field in the real response — everything else stays
+      res.body.tasks[0].status = 'overdue';
+    });
+  }).as('getTasks');
+
+  cy.visit('/tasks');
+  cy.wait('@getTasks');
+
+  // The app should render the overdue badge based on the patched status
+  cy.get('[data-testid="task-0"] [data-testid="status-badge"]')
+    .should('have.text', 'Overdue');
+});`,
+  },
+  {
+    id: "cy-047",
+    title: "Assert element is in viewport",
+    description: "Confirm an element is actually visible within the browser's current scroll position.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["viewport", "visible", "isInViewport", "scroll", "in-view"],
+    language: "javascript",
+    code: `// Add this reusable command once in cypress/support/commands.js
+Cypress.Commands.add('isInViewport', { prevSubject: true }, (subject) => {
+  const rect = subject[0].getBoundingClientRect();
+  expect(rect.top).to.be.gte(0);
+  expect(rect.bottom).to.be.lte(Cypress.config('viewportHeight'));
+  expect(rect.left).to.be.gte(0);
+  expect(rect.right).to.be.lte(Cypress.config('viewportWidth'));
+  return subject;
+});
+
+// Usage in any test:
+it('CTA button is fully visible without scrolling', () => {
+  cy.visit('/landing');
+  cy.get('[data-testid="cta-button"]').isInViewport();
+});`,
+  },
+  {
+    id: "cy-048",
+    title: "Clear and type into an input field",
+    description: "Clear an existing value and type a replacement — the standard edit-form pattern in Cypress.",
+    framework: "cypress",
+    category: "forms",
+    tags: ["clear", "type", "input", "edit", "fill"],
+    language: "javascript",
+    code: `it('updates the email address field', () => {
+  cy.visit('/account');
+
+  // .clear() empties the field, .type() then populates it fresh
+  cy.get('[name="email"]')
+    .should('have.value', 'old@example.com')
+    .clear()
+    .type('new@example.com')
+    .should('have.value', 'new@example.com');
+
+  cy.get('[type="submit"]').click();
+  cy.contains('Email updated').should('be.visible');
+});`,
+  },
 ];
 
 export const categories: { value: Category | "all"; label: string }[] = [
