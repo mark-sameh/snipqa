@@ -10,6 +10,14 @@ export default function Header() {
         <nav className="flex items-center gap-6 text-sm text-text-dim">
           <Link href="#library" className="hover:text-text transition-colors">Library</Link>
           <Link href="#generate" className="hover:text-text transition-colors">AI Generate</Link>
+          <a
+            href="https://forms.gle/placeholder"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-border px-4 py-1.5 text-sm font-medium text-text-dim hover:border-accent hover:text-accent transition-colors"
+          >
+            Suggest a Snippet
+          </a>
           <Link
             href="#generate"
             className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-bg hover:bg-accent-dim transition-colors"

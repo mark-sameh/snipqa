@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Snippet } from "@/data/snippets";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -9,6 +9,30 @@ interface Props { snippet: Snippet; }
 
 export default function SnippetCard({ snippet }: Props) {
   const [copied, setCopied] = useState(false);
+  const [likes, setLikes] = useState(0);
+  const [dislikes, setDislikes] = useState(0);
+
+  const storageKey = `snipqa-votes-${snippet.id}`;
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const { likes: l, dislikes: d } = JSON.parse(stored);
+        setLikes(l ?? 0);
+        setDislikes(d ?? 0);
+      }
+    } catch {}
+  }, [storageKey]);
+
+  const vote = (type: "like" | "dislike") => {
+    const next = type === "like"
+      ? { likes: likes + 1, dislikes }
+      : { likes, dislikes: dislikes + 1 };
+    if (type === "like") setLikes(next.likes);
+    else setDislikes(next.dislikes);
+    localStorage.setItem(storageKey, JSON.stringify(next));
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(snippet.code);
@@ -55,12 +79,30 @@ export default function SnippetCard({ snippet }: Props) {
         </SyntaxHighlighter>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {snippet.tags.map((tag) => (
-          <span key={tag} className="rounded-md bg-bg px-2 py-0.5 font-mono text-xs text-muted">
-            #{tag}
-          </span>
-        ))}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="flex flex-wrap gap-1.5">
+          {snippet.tags.map((tag) => (
+            <span key={tag} className="rounded-md bg-bg px-2 py-0.5 font-mono text-xs text-muted">
+              #{tag}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+          <button
+            onClick={() => vote("like")}
+            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-dim transition-all hover:border-accent hover:text-accent"
+          >
+            <ThumbsUp size={13} />
+            <span>{likes}</span>
+          </button>
+          <button
+            onClick={() => vote("dislike")}
+            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-dim transition-all hover:border-red-500 hover:text-red-400"
+          >
+            <ThumbsDown size={13} />
+            <span>{dislikes}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
