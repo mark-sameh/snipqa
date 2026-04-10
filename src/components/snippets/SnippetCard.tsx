@@ -30,15 +30,30 @@ export default function SnippetCard({ snippet }: Props) {
   }, [countsKey, choiceKey]);
 
   const vote = (type: "like" | "dislike") => {
-    if (voted) return; // one vote per snippet per browser
-    const next = type === "like"
-      ? { likes: likes + 1, dislikes }
-      : { likes, dislikes: dislikes + 1 };
-    setLikes(next.likes);
-    setDislikes(next.dislikes);
-    setVoted(type);
-    localStorage.setItem(countsKey, JSON.stringify(next));
-    localStorage.setItem(choiceKey, type);
+    // Clicking the opposite button while voted → do nothing
+    if (voted !== null && voted !== type) return;
+
+    if (voted === type) {
+      // Toggle off: remove the vote
+      const next = type === "like"
+        ? { likes: likes - 1, dislikes }
+        : { likes, dislikes: dislikes - 1 };
+      setLikes(next.likes);
+      setDislikes(next.dislikes);
+      setVoted(null);
+      localStorage.setItem(countsKey, JSON.stringify(next));
+      localStorage.removeItem(choiceKey);
+    } else {
+      // Cast new vote
+      const next = type === "like"
+        ? { likes: likes + 1, dislikes }
+        : { likes, dislikes: dislikes + 1 };
+      setLikes(next.likes);
+      setDislikes(next.dislikes);
+      setVoted(type);
+      localStorage.setItem(countsKey, JSON.stringify(next));
+      localStorage.setItem(choiceKey, type);
+    }
   };
 
   const handleCopy = async () => {
@@ -109,7 +124,7 @@ export default function SnippetCard({ snippet }: Props) {
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           <button
             onClick={() => vote("like")}
-            disabled={voted !== null}
+            disabled={voted === "dislike"}
             className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-all ${likeClass}`}
           >
             <ThumbsUp size={13} />
@@ -117,7 +132,7 @@ export default function SnippetCard({ snippet }: Props) {
           </button>
           <button
             onClick={() => vote("dislike")}
-            disabled={voted !== null}
+            disabled={voted === "like"}
             className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-all ${dislikeClass}`}
           >
             <ThumbsDown size={13} />
