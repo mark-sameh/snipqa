@@ -1422,6 +1422,738 @@ roles.forEach(({ role, canDelete }) => {
     .should('be.visible');
 });`,
   },
+
+  // ── PLAYWRIGHT (continued) ────────────────────────────────────
+  {
+    id: "pw-034",
+    title: "Drag and drop",
+    description: "Drag an element to a drop target using Playwright's built-in dragTo API.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["drag", "drop", "dragTo", "mouse"],
+    language: "typescript",
+    code: `test('drags a card to the done column', async ({ page }) => {
+  await page.goto('/kanban');
+
+  const card = page.locator('[data-testid="card-1"]');
+  const dropZone = page.locator('[data-testid="column-done"]');
+
+  // dragTo handles the full mousedown → mousemove → mouseup sequence
+  await card.dragTo(dropZone);
+
+  // Assert the card now lives inside the target column
+  await expect(dropZone.locator('[data-testid="card-1"]')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-035",
+    title: "Hover over an element",
+    description: "Trigger a hover to reveal a tooltip or dropdown menu.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["hover", "tooltip", "mouseover", "mouseenter"],
+    language: "typescript",
+    code: `test('tooltip appears on hover', async ({ page }) => {
+  await page.goto('/dashboard');
+
+  // hover() dispatches the full mousemove → mouseenter → mouseover sequence
+  await page.locator('[data-testid="info-icon"]').hover();
+
+  await expect(page.getByRole('tooltip')).toBeVisible();
+  await expect(page.getByRole('tooltip')).toContainText('Last updated');
+});`,
+  },
+  {
+    id: "pw-036",
+    title: "Handle browser dialog (alert / confirm)",
+    description: "Listen for alert and confirm dialogs and accept or dismiss them programmatically.",
+    framework: "playwright",
+    category: "navigation",
+    tags: ["dialog", "alert", "confirm", "dismiss", "accept"],
+    language: "typescript",
+    code: `test('accepts a confirm dialog before deleting', async ({ page }) => {
+  // Register the handler BEFORE the action that triggers the dialog
+  page.on('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('Are you sure?');
+    await dialog.accept(); // use dialog.dismiss() to click Cancel
+  });
+
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Delete account' }).click();
+
+  await expect(page.getByText('Account deleted')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-037",
+    title: "Switch between browser tabs",
+    description: "Open a new tab, interact with it, then return focus to the original tab.",
+    framework: "playwright",
+    category: "navigation",
+    tags: ["tab", "new tab", "context", "bringToFront", "popup"],
+    language: "typescript",
+    code: `test('switches between tabs', async ({ page, context }) => {
+  await page.goto('/home');
+
+  // Capture the new tab at the same time as the click that opens it
+  const [newTab] = await Promise.all([
+    context.waitForEvent('page'),
+    page.getByRole('link', { name: 'Open in new tab' }).click(),
+  ]);
+
+  await newTab.waitForLoadState('domcontentloaded');
+  await expect(newTab).toHaveURL(/\/guide/);
+  await newTab.getByRole('button', { name: 'Accept cookies' }).click();
+
+  // Return focus to the original tab
+  await page.bringToFront();
+  await expect(page).toHaveURL(/\/home/);
+});`,
+  },
+  {
+    id: "pw-038",
+    title: "Scroll to an element",
+    description: "Scroll an off-screen element into the viewport before asserting or interacting.",
+    framework: "playwright",
+    category: "navigation",
+    tags: ["scroll", "scrollIntoView", "viewport", "toBeInViewport"],
+    language: "typescript",
+    code: `test('scrolls to the pricing section', async ({ page }) => {
+  await page.goto('/landing');
+
+  const pricing = page.getByTestId('pricing-section');
+
+  // scrollIntoViewIfNeeded does nothing if the element is already visible
+  await pricing.scrollIntoViewIfNeeded();
+
+  // toBeInViewport() asserts the element is actually in the visible area
+  await expect(pricing).toBeInViewport();
+  await expect(pricing.getByRole('heading', { name: /pricing/i })).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-039",
+    title: "Get all text from a list of elements",
+    description: "Collect every matched element's text into a string array and assert the collection.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["allTextContents", "text", "list", "array"],
+    language: "typescript",
+    code: `test('blog tags include "playwright"', async ({ page }) => {
+  await page.goto('/blog');
+
+  const tags = page.locator('[data-testid="tag"]');
+
+  // allTextContents() resolves the full locator set to a string[]
+  const texts = await tags.allTextContents();
+
+  expect(texts.length).toBeGreaterThan(0);
+  expect(texts).toContain('playwright');
+
+  // Assert no duplicate tags
+  const unique = new Set(texts);
+  expect(unique.size).toBe(texts.length);
+});`,
+  },
+  {
+    id: "pw-040",
+    title: "Test mobile viewport with device emulation",
+    description: "Emulate a real device profile to verify responsive layout in a single test.",
+    framework: "playwright",
+    category: "visual",
+    tags: ["mobile", "viewport", "devices", "responsive", "emulation"],
+    language: "typescript",
+    code: `import { test, expect, devices } from '@playwright/test';
+
+test('mobile nav is shown on iPhone 14', async ({ browser }) => {
+  // Spread the full device profile: viewport, UA, deviceScaleFactor, etc.
+  const ctx = await browser.newContext({ ...devices['iPhone 14'] });
+  const page = await ctx.newPage();
+
+  await page.goto('/');
+
+  // Hamburger visible on mobile, desktop nav hidden
+  await expect(page.getByTestId('mobile-menu-button')).toBeVisible();
+  await expect(page.getByTestId('desktop-nav')).toBeHidden();
+
+  await ctx.close();
+});`,
+  },
+  {
+    id: "pw-041",
+    title: "Run tests across multiple browsers",
+    description: "Configure projects in playwright.config.ts so every test runs on Chromium, Firefox, and WebKit.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["projects", "cross-browser", "firefox", "webkit", "config"],
+    language: "typescript",
+    code: `// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome']  } },
+    { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit',   use: { ...devices['Desktop Safari']  } },
+  ],
+});
+
+// Run all browsers:     npx playwright test
+// Run one browser only: npx playwright test --project=firefox`,
+  },
+  {
+    id: "pw-042",
+    title: "Mock browser geolocation",
+    description: "Inject fake GPS coordinates before the page loads to test location-aware features.",
+    framework: "playwright",
+    category: "network",
+    tags: ["geolocation", "mock", "context", "permissions", "GPS"],
+    language: "typescript",
+    code: `test('shows the correct city for mocked coordinates', async ({ browser }) => {
+  const context = await browser.newContext({
+    geolocation: { latitude: 48.8566, longitude: 2.3522 }, // Paris
+    permissions: ['geolocation'], // grant without a browser prompt
+  });
+  const page = await context.newPage();
+
+  await page.goto('/store-finder');
+  await page.getByRole('button', { name: 'Use my location' }).click();
+
+  // The app should resolve the mocked coordinates to Paris
+  await expect(page.getByTestId('detected-city')).toHaveText('Paris');
+  await context.close();
+});`,
+  },
+  {
+    id: "pw-043",
+    title: "Interact with content inside an iframe",
+    description: "Use frameLocator() to scope all locator calls inside an embedded iframe.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["iframe", "frameLocator", "embed", "payment", "cross-frame"],
+    language: "typescript",
+    code: `test('fills a payment form inside an iframe', async ({ page }) => {
+  await page.goto('/checkout');
+
+  // frameLocator() switches the locator context into the iframe's DOM
+  const frame = page.frameLocator('[data-testid="payment-iframe"]');
+
+  // All commands inside the frame use the same Playwright locator API
+  await frame.locator('[placeholder="Card number"]').fill('4242 4242 4242 4242');
+  await frame.locator('[placeholder="MM / YY"]').fill('12 / 28');
+  await frame.locator('[placeholder="CVC"]').fill('123');
+
+  await page.getByRole('button', { name: 'Pay now' }).click();
+  await expect(page.getByText('Payment successful')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-044",
+    title: "Trigger keyboard shortcuts",
+    description: "Press modifier key combinations like Ctrl+A and Ctrl+C on a focused element.",
+    framework: "playwright",
+    category: "forms",
+    tags: ["keyboard", "ctrl", "shortcut", "press", "hotkey"],
+    language: "typescript",
+    code: `test('selects all text and copies with keyboard shortcuts', async ({ page }) => {
+  await page.goto('/editor');
+
+  const editor = page.getByRole('textbox', { name: 'Content' });
+  await editor.fill('Hello World');
+
+  // press() accepts KeyboardEvent.key names and modifier combos
+  await editor.press('Control+a'); // select all text
+  await editor.press('Control+c'); // copy to clipboard
+
+  // Paste into a second field to verify the clipboard content
+  const preview = page.getByRole('textbox', { name: 'Preview' });
+  await preview.click();
+  await preview.press('Control+v');
+
+  await expect(preview).toHaveValue('Hello World');
+});`,
+  },
+  {
+    id: "pw-045",
+    title: "Count elements on the page",
+    description: "Assert an exact element count with toHaveCount(), or read the count for conditional logic.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["count", "toHaveCount", "length", "elements"],
+    language: "typescript",
+    code: `test('product grid renders the right number of cards', async ({ page }) => {
+  await page.goto('/products');
+
+  const cards = page.locator('[data-testid="product-card"]');
+
+  // toHaveCount() retries — prefer it over count() for assertions
+  await expect(cards).toHaveCount(12);
+
+  // Use count() when the number drives conditional logic
+  const n = await cards.count();
+  if (n > 6) {
+    await expect(page.getByTestId('pagination')).toBeVisible();
+  }
+});`,
+  },
+  {
+    id: "pw-046",
+    title: "Read and assert a cookie",
+    description: "Retrieve cookies from the browser context after login and assert their security flags.",
+    framework: "playwright",
+    category: "auth",
+    tags: ["cookie", "cookies", "httpOnly", "secure", "assert"],
+    language: "typescript",
+    code: `test('auth cookie is set with correct security flags', async ({ page, context }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('user@test.com');
+  await page.getByLabel('Password').fill('secret');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL('/dashboard');
+
+  // context.cookies() returns every cookie for the current browser context
+  const cookies = await context.cookies();
+  const auth = cookies.find((c) => c.name === 'auth_token');
+
+  expect(auth).toBeDefined();
+  expect(auth!.httpOnly).toBe(true); // JS must not be able to read it
+  expect(auth!.secure).toBe(true);   // must only transmit over HTTPS
+});`,
+  },
+  {
+    id: "pw-047",
+    title: "Pre-set localStorage before navigation",
+    description: "Use addInitScript to inject localStorage values before the page boots — ideal for themes, feature flags, and onboarding state.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["localStorage", "addInitScript", "theme", "feature flag", "setup"],
+    language: "typescript",
+    code: `test('dashboard loads with pre-set dark mode', async ({ page }) => {
+  // addInitScript runs in the browser before every page.goto() in this test
+  await page.addInitScript(() => {
+    window.localStorage.setItem('theme', 'dark');
+    window.localStorage.setItem('onboardingComplete', 'true');
+  });
+
+  await page.goto('/dashboard');
+
+  // Theme is already applied — no toggle click needed
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  // Onboarding modal should not appear for returning users
+  await expect(page.getByTestId('onboarding-modal')).not.toBeVisible();
+});`,
+  },
+  {
+    id: "pw-048",
+    title: "Retry assertions with a custom timeout",
+    description: "Override the per-assertion timeout and use toPass() for complex retry scenarios.",
+    framework: "playwright",
+    category: "wait",
+    tags: ["timeout", "retry", "toPass", "custom wait", "polling"],
+    language: "typescript",
+    code: `test('toast auto-dismisses and status becomes Ready', async ({ page }) => {
+  await page.goto('/notifications');
+  await page.getByRole('button', { name: 'Trigger notification' }).click();
+
+  // Extend the default timeout for this specific assertion
+  await expect(page.getByTestId('toast')).toBeHidden({ timeout: 10_000 });
+
+  // toPass() retries the callback until it stops throwing — great for
+  // composite assertions that can't use a single locator
+  await expect(async () => {
+    const text = await page.locator('[data-testid="status"]').textContent();
+    expect(text).toBe('Ready');
+  }).toPass({ timeout: 15_000, intervals: [500, 1000, 2000] });
+});`,
+  },
+  {
+    id: "pw-049",
+    title: "Generate random test data inline",
+    description: "Create unique email and username values per run to prevent conflicts in a shared test database.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["random", "test data", "unique", "faker", "Math.random"],
+    language: "typescript",
+    code: `test('registers a new user with unique credentials', async ({ page }) => {
+  // Generate a short unique suffix — avoids conflicts in a shared DB
+  const uid = Math.random().toString(36).slice(2, 10);
+  const email = \`qa+\${uid}@example.com\`;
+  const username = \`user_\${uid}\`;
+
+  await page.goto('/register');
+  await page.getByLabel('Username').fill(username);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill('Str0ng!Pass');
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(page.getByText(\`Welcome, \${username}\`)).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-050",
+    title: "Take an element-level screenshot",
+    description: "Capture a screenshot scoped to a single component for visual documentation or baseline comparison.",
+    framework: "playwright",
+    category: "visual",
+    tags: ["screenshot", "element", "component", "toHaveScreenshot", "visual regression"],
+    language: "typescript",
+    code: `test('sidebar matches visual baseline', async ({ page }) => {
+  await page.goto('/dashboard');
+
+  const sidebar = page.getByTestId('sidebar');
+  await sidebar.scrollIntoViewIfNeeded();
+
+  // For a one-off PNG saved to disk:
+  await sidebar.screenshot({ path: 'test-results/sidebar.png' });
+
+  // For automated regression, use toHaveScreenshot() —
+  // first run creates the baseline; subsequent runs diff against it
+  await expect(sidebar).toHaveScreenshot('sidebar-baseline.png', {
+    maxDiffPixelRatio: 0.02, // tolerate 2% pixel difference (anti-aliasing)
+  });
+});`,
+  },
+
+  // ── CYPRESS (continued) ──────────────────────────────────────
+  {
+    id: "cy-031",
+    title: "Drag and drop",
+    description: "Simulate HTML5 drag-and-drop by triggering the underlying mouse events manually.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["drag", "drop", "trigger", "mousedown", "mousemove"],
+    language: "javascript",
+    code: `it('drags a card to the done column', () => {
+  cy.visit('/kanban');
+
+  // Cypress has no native drag API — fire the underlying pointer events
+  cy.get('[data-testid="card-1"]')
+    .trigger('mousedown', { which: 1, force: true });
+
+  cy.get('[data-testid="column-done"]')
+    .trigger('mousemove', { force: true })
+    .trigger('mouseup',   { force: true });
+
+  cy.get('[data-testid="column-done"]')
+    .find('[data-testid="card-1"]')
+    .should('exist');
+});`,
+  },
+  {
+    id: "cy-032",
+    title: "Hover over an element",
+    description: "Dispatch a mouseover event to reveal tooltips or hover menus — Cypress has no native .hover().",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["hover", "mouseover", "trigger", "tooltip"],
+    language: "javascript",
+    code: `it('tooltip appears on hover', () => {
+  cy.visit('/dashboard');
+
+  // trigger('mouseover') fires the event Cypress would send on hover
+  cy.get('[data-testid="info-icon"]').trigger('mouseover');
+
+  cy.get('[role="tooltip"]')
+    .should('be.visible')
+    .and('contain.text', 'Last updated');
+});`,
+  },
+  {
+    id: "cy-033",
+    title: "Handle a browser alert or confirm dialog",
+    description: "Stub window.confirm to accept or dismiss a dialog without freezing the Cypress runner.",
+    framework: "cypress",
+    category: "navigation",
+    tags: ["alert", "confirm", "dialog", "window:confirm", "stub"],
+    language: "javascript",
+    code: `it('accepts a confirm dialog before deleting', () => {
+  cy.visit('/settings');
+
+  // Register the handler BEFORE the action that triggers the dialog
+  cy.on('window:confirm', (message) => {
+    expect(message).to.include('Are you sure?');
+    return true; // return false to click Cancel
+  });
+
+  cy.get('[data-testid="delete-account-btn"]').click();
+  cy.contains('Account deleted').should('be.visible');
+});`,
+  },
+  {
+    id: "cy-034",
+    title: "Interact with content inside an iframe",
+    description: "Access a same-origin iframe's DOM by chaining through its contentDocument body.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["iframe", "contentDocument", "same-origin", "embed", "wrap"],
+    language: "javascript",
+    code: `it('fills a payment form inside an iframe', () => {
+  cy.visit('/checkout');
+
+  // Store the iframe body as an alias to avoid repeating the chain
+  cy.get('[data-testid="payment-iframe"]')
+    .its('0.contentDocument.body')
+    .should('not.be.empty')   // wait for the iframe to finish loading
+    .then(cy.wrap)
+    .as('frame');
+
+  cy.get('@frame').find('[placeholder="Card number"]').type('4242 4242 4242 4242');
+  cy.get('@frame').find('[placeholder="CVC"]').type('123');
+
+  cy.get('[type="submit"]').click();
+  cy.contains('Payment successful').should('be.visible');
+});`,
+  },
+  {
+    id: "cy-035",
+    title: "Scroll to an element",
+    description: "Use .scrollIntoView() to bring an off-screen element into the viewport.",
+    framework: "cypress",
+    category: "navigation",
+    tags: ["scroll", "scrollIntoView", "viewport", "off-screen"],
+    language: "javascript",
+    code: `it('scrolls to the pricing section', () => {
+  cy.visit('/landing');
+
+  // scrollIntoView() scrolls and then yields the element for chaining
+  cy.get('[data-testid="pricing-section"]')
+    .scrollIntoView()
+    .should('be.visible');
+
+  cy.get('[data-testid="pricing-section"] h2')
+    .should('contain.text', 'Pricing');
+});`,
+  },
+  {
+    id: "cy-036",
+    title: "Get text from multiple elements",
+    description: "Collect inner text from a list of elements using .each() and assert the gathered array.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["text", "each", "array", "collect", "list"],
+    language: "javascript",
+    code: `it('blog tags include "playwright"', () => {
+  cy.visit('/blog');
+
+  const texts = [];
+
+  cy.get('[data-testid="tag"]')
+    .each(($el) => {
+      texts.push($el.text().trim()); // .text() returns the raw string
+    })
+    .then(() => {
+      expect(texts.length).to.be.greaterThan(0);
+      expect(texts).to.include('playwright');
+
+      // Assert no duplicate tags
+      const unique = [...new Set(texts)];
+      expect(unique.length).to.equal(texts.length);
+    });
+});`,
+  },
+  {
+    id: "cy-037",
+    title: "Test mobile viewport",
+    description: "Switch to a mobile viewport with cy.viewport() to verify responsive layout.",
+    framework: "cypress",
+    category: "visual",
+    tags: ["mobile", "viewport", "responsive", "cy.viewport", "iphone"],
+    language: "javascript",
+    code: `it('shows mobile navigation on a small screen', () => {
+  // Emulate an iPhone 14 — Cypress supports named presets and custom px sizes
+  cy.viewport('iphone-14');
+  cy.visit('/');
+
+  // Hamburger should be visible; desktop nav should not
+  cy.get('[data-testid="mobile-menu-button"]').should('be.visible');
+  cy.get('[data-testid="desktop-nav"]').should('not.be.visible');
+
+  // Verify the menu expands on click
+  cy.get('[data-testid="mobile-menu-button"]').click();
+  cy.get('[data-testid="mobile-nav"]').should('be.visible');
+});`,
+  },
+  {
+    id: "cy-038",
+    title: "Mock browser geolocation",
+    description: "Stub navigator.geolocation.getCurrentPosition before page load to test location-aware UI.",
+    framework: "cypress",
+    category: "network",
+    tags: ["geolocation", "stub", "mock", "navigator", "location"],
+    language: "javascript",
+    code: `it('shows Paris when location is mocked', () => {
+  cy.visit('/store-finder', {
+    onBeforeLoad(win) {
+      // Replace the real API with a stub before the page initialises
+      cy.stub(win.navigator.geolocation, 'getCurrentPosition').callsFake((cb) => {
+        cb({ coords: { latitude: 48.8566, longitude: 2.3522 } }); // Paris
+      });
+    },
+  });
+
+  cy.get('[data-testid="use-location-btn"]').click();
+  cy.get('[data-testid="detected-city"]').should('have.text', 'Paris');
+});`,
+  },
+  {
+    id: "cy-039",
+    title: "Read and assert a cookie",
+    description: "Use cy.getCookie() to retrieve a named cookie and assert its value and security flags.",
+    framework: "cypress",
+    category: "auth",
+    tags: ["cookie", "getCookie", "httpOnly", "secure", "assert"],
+    language: "javascript",
+    code: `it('auth cookie is set with correct security flags', () => {
+  cy.request('POST', '/api/login', {
+    email: 'user@test.com',
+    password: 'secret',
+  });
+
+  // getCookie() returns the cookie object — chain assertions on properties
+  cy.getCookie('auth_token').should('exist').then((cookie) => {
+    expect(cookie.httpOnly).to.be.true; // JS must not be able to read it
+    expect(cookie.secure).to.be.true;   // must only transmit over HTTPS
+  });
+});`,
+  },
+  {
+    id: "cy-040",
+    title: "Pre-set localStorage before navigation",
+    description: "Inject localStorage values via onBeforeLoad so the app reads them on first paint.",
+    framework: "cypress",
+    category: "fixtures",
+    tags: ["localStorage", "onBeforeLoad", "theme", "setup", "initialise"],
+    language: "javascript",
+    code: `it('dashboard loads with dark mode enabled', () => {
+  cy.visit('/dashboard', {
+    onBeforeLoad(win) {
+      // Set localStorage BEFORE the page script executes
+      win.localStorage.setItem('theme', 'dark');
+      win.localStorage.setItem('onboardingComplete', 'true');
+    },
+  });
+
+  cy.get('html').should('have.attr', 'data-theme', 'dark');
+
+  // Onboarding modal should not appear for returning users
+  cy.get('[data-testid="onboarding-modal"]').should('not.exist');
+});`,
+  },
+  {
+    id: "cy-041",
+    title: "Trigger keyboard shortcuts",
+    description: "Use Cypress key sequences like {ctrl+a} and {ctrl+v} to test editor keyboard interactions.",
+    framework: "cypress",
+    category: "forms",
+    tags: ["keyboard", "ctrl", "shortcut", "type", "hotkey"],
+    language: "javascript",
+    code: `it('copies text with Ctrl+A and Ctrl+C', () => {
+  cy.visit('/editor');
+
+  cy.get('[data-testid="content-editor"]')
+    .type('Hello World')
+    .type('{ctrl+a}') // select all text in the field
+    .type('{ctrl+c}'); // copy the selection to the clipboard
+
+  cy.get('[data-testid="preview-area"]')
+    .click()
+    .type('{ctrl+v}') // paste from clipboard
+    .should('have.value', 'Hello World');
+});`,
+  },
+  {
+    id: "cy-042",
+    title: "Count elements on the page",
+    description: "Assert the exact number of matched elements with have.length, or read the count dynamically.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["count", "have.length", "length", "elements"],
+    language: "javascript",
+    code: `it('product grid shows the correct number of cards', () => {
+  cy.visit('/products');
+
+  // have.length asserts the exact count; Cypress retries until it passes
+  cy.get('[data-testid="product-card"]').should('have.length', 12);
+
+  // Use .its('length') when the count drives further conditional logic
+  cy.get('[data-testid="product-card"]')
+    .its('length')
+    .should('be.gte', 1);
+});`,
+  },
+  {
+    id: "cy-043",
+    title: "Generate random test data inline",
+    description: "Produce a unique email and username per run to prevent conflicts in a shared test environment.",
+    framework: "cypress",
+    category: "fixtures",
+    tags: ["random", "test data", "unique", "Math.random", "faker"],
+    language: "javascript",
+    code: `it('registers a new user with unique credentials', () => {
+  // Math.random() gives a short unique suffix per run
+  const uid = Math.random().toString(36).slice(2, 10);
+  const email = \`qa+\${uid}@example.com\`;
+  const username = \`user_\${uid}\`;
+
+  cy.visit('/register');
+  cy.get('[name="username"]').type(username);
+  cy.get('[name="email"]').type(email);
+  cy.get('[name="password"]').type('Str0ng!Pass');
+  cy.get('[type="submit"]').click();
+
+  cy.contains(\`Welcome, \${username}\`).should('be.visible');
+});`,
+  },
+  {
+    id: "cy-044",
+    title: "Retry an assertion with a custom timeout",
+    description: "Override the default 4-second retry window to wait longer for slow DOM updates.",
+    framework: "cypress",
+    category: "wait",
+    tags: ["timeout", "retry", "custom wait", "should", "polling"],
+    language: "javascript",
+    code: `it('toast disappears and status becomes Ready', () => {
+  cy.visit('/notifications');
+  cy.get('[data-testid="trigger-btn"]').click();
+
+  cy.get('[data-testid="toast"]').should('be.visible');
+
+  // Pass a timeout option to extend the default 4 s retry window
+  cy.get('[data-testid="toast"]', { timeout: 10_000 }).should('not.exist');
+
+  // Use a should callback to assert on derived/computed values
+  cy.get('[data-testid="status"]').should(($el) => {
+    expect($el.text().trim()).to.equal('Ready');
+  });
+});`,
+  },
+  {
+    id: "cy-045",
+    title: "Stub window.open to prevent new tabs",
+    description: "Replace window.open with a cy.stub() so no real tab opens during tests, then assert the call.",
+    framework: "cypress",
+    category: "network",
+    tags: ["window.open", "stub", "new tab", "sinon", "spy"],
+    language: "javascript",
+    code: `it('share button calls window.open with the correct URL', () => {
+  cy.visit('/share');
+
+  cy.window().then((win) => {
+    // Replace window.open before the button click — no real tab will open
+    cy.stub(win, 'open').as('windowOpen');
+  });
+
+  cy.get('[data-testid="share-btn"]').click();
+
+  // Assert window.open was called with a URL matching the pattern
+  cy.get('@windowOpen').should(
+    'have.been.calledWith',
+    Cypress.sinon.match(/\/share\?id=/),
+    '_blank'
+  );
+});`,
+  },
 ];
 
 export const categories: { value: Category | "all"; label: string }[] = [
