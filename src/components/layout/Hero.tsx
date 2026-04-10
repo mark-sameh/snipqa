@@ -17,7 +17,7 @@ export default function Hero() {
           Playwright &middot; Cypress &middot; AI-powered
         </div>
 
-        <h1 className="mb-6 font-display text-3xl font-extrabold leading-tight tracking-tight text-text md:text-4xl">
+        <h1 className="mb-6 font-display text-3xl font-bold leading-snug tracking-normal text-text md:text-4xl">
           Stop Googling.<br />
           <span className="text-accent">Describe it. Get it.</span>
         </h1>
