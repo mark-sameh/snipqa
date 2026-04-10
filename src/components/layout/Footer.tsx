@@ -5,7 +5,7 @@ export default function Footer() {
         <span>SnipQA &copy; 2026 &mdash; Built for QA engineers</span>
 
         <a
-          href="https://forms.gle/placeholder"
+          href="https://forms.gle/1eF9jyeM4VTbG4Fj6"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent transition-colors"

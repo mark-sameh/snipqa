@@ -11,7 +11,7 @@ export default function Header() {
           <Link href="#library" className="hover:text-text transition-colors">Library</Link>
           <Link href="#generate" className="hover:text-text transition-colors">AI Generate</Link>
           <a
-            href="https://forms.gle/placeholder"
+            href="https://forms.gle/1eF9jyeM4VTbG4Fj6"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-md border border-border px-4 py-1.5 text-sm font-medium text-text-dim hover:border-accent hover:text-accent transition-colors"
