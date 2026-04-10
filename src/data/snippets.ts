@@ -2272,6 +2272,941 @@ it('CTA button is fully visible without scrolling', () => {
   cy.contains('Email updated').should('be.visible');
 });`,
   },
+
+  // ── PLAYWRIGHT (continued) ────────────────────────────────────
+  {
+    id: "pw-053",
+    title: "getByRole — click a button by name",
+    description: "Locate a button by its accessible role and visible name — the most resilient selector strategy.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["getByRole", "button", "accessible name", "ARIA"],
+    language: "typescript",
+    code: `test('saves changes using getByRole', async ({ page }) => {
+  await page.goto('/settings');
+
+  // getByRole matches what screen readers see — survives CSS and text refactors
+  await page.getByRole('button', { name: 'Save changes' }).click();
+
+  await expect(page.getByText('Settings saved')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-054",
+    title: "getByLabel — fill a form input",
+    description: "Find an input by its associated label text — no need to know the input's id or name attribute.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["getByLabel", "label", "form", "input"],
+    language: "typescript",
+    code: `test('fills inputs by their label text', async ({ page }) => {
+  await page.goto('/signup');
+
+  // getByLabel works with <label for="...">, aria-label, and aria-labelledby
+  await page.getByLabel('Email address').fill('qa@example.com');
+  await page.getByLabel('Password').fill('Str0ng!Pass');
+
+  await page.getByRole('button', { name: 'Sign up' }).click();
+  await expect(page.getByText('Account created')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-055",
+    title: "getByPlaceholder — fill by placeholder text",
+    description: "Locate an input by its placeholder attribute — useful for search bars and inline forms without visible labels.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["getByPlaceholder", "placeholder", "search", "input"],
+    language: "typescript",
+    code: `test('searches using the placeholder-located input', async ({ page }) => {
+  await page.goto('/library');
+
+  // getByPlaceholder is ideal when there is no visible <label>
+  await page.getByPlaceholder('Search snippets...').fill('playwright drag');
+  await page.getByPlaceholder('Search snippets...').press('Enter');
+
+  await expect(page.getByTestId('results-list')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-056",
+    title: "getByTestId — locate by data-testid",
+    description: "Select elements by a data-testid attribute — immune to text, style, and layout changes.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["getByTestId", "data-testid", "stable selector", "test id"],
+    language: "typescript",
+    code: `test('interacts with elements via data-testid', async ({ page }) => {
+  await page.goto('/profile');
+
+  // data-testid never breaks due to copy or styling changes —
+  // the gold standard for stable selectors in production test suites
+  const avatar = page.getByTestId('user-avatar');
+  await expect(avatar).toBeVisible();
+
+  await page.getByTestId('edit-profile-btn').click();
+  await expect(page.getByTestId('edit-profile-modal')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-057",
+    title: "getByText — find element by visible text",
+    description: "Locate any element by its visible text content — supports exact strings and regex patterns.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["getByText", "text content", "regex", "visible text"],
+    language: "typescript",
+    code: `test('finds elements by their text content', async ({ page }) => {
+  await page.goto('/pricing');
+
+  // Exact string match — finds the element containing exactly this text
+  await page.getByText('Get started for free').click();
+
+  // Regex — useful for dynamic text or case-insensitive matching
+  await expect(page.getByText(/welcome,/i)).toBeVisible();
+
+  // Scope to a specific element type to avoid ambiguous matches
+  await expect(page.getByRole('heading').getByText('Dashboard')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-058",
+    title: "Filter a locator by text",
+    description: "Narrow a matched set of elements down to only those containing specific text.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["filter", "hasText", "locator", "narrow"],
+    language: "typescript",
+    code: `test('clicks the "View" button only on Alice's card', async ({ page }) => {
+  await page.goto('/team');
+
+  const cards = page.locator('[data-testid="member-card"]');
+
+  // filter() narrows the matched set without leaving the locator API —
+  // far more reliable than CSS :has-text() pseudo-classes
+  const aliceCard = cards.filter({ hasText: 'Alice' });
+  await expect(aliceCard).toHaveCount(1);
+
+  await aliceCard.getByRole('button', { name: 'View profile' }).click();
+  await expect(page.getByTestId('profile-drawer')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-059",
+    title: "XPath selector — when to use it",
+    description: "Use XPath as a last resort for legacy HTML with no accessible attributes or test IDs.",
+    framework: "playwright",
+    category: "selectors",
+    tags: ["XPath", "xpath", "legacy", "normalize-space"],
+    language: "typescript",
+    code: `test('targets a table row by cell text using XPath', async ({ page }) => {
+  await page.goto('/invoices');
+
+  // XPath is a last resort — only reach for it when getByRole, getByTestId,
+  // and CSS selectors all fail (e.g. old server-rendered HTML with no hooks).
+  // Here: find the <tr> whose first <td> contains "Invoice #1042"
+  const row = page.locator('//tr[td[normalize-space()="Invoice #1042"]]');
+  await expect(row).toBeVisible();
+
+  // Relative XPath from the matched element — get the third cell
+  const statusCell = row.locator('xpath=td[3]');
+  await expect(statusCell).toHaveText('Paid');
+});`,
+  },
+  {
+    id: "pw-060",
+    title: "Save auth state to file after login",
+    description: "Persist cookies and localStorage to a JSON file after login so other tests can skip the UI flow.",
+    framework: "playwright",
+    category: "auth",
+    tags: ["storageState", "save auth", "login", "persist session"],
+    language: "typescript",
+    code: `test('logs in and saves session state to disk', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('user@test.com');
+  await page.getByLabel('Password').fill('secret');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL('/dashboard');
+
+  // Saves cookies + localStorage to a JSON file.
+  // Other test files can load this file and skip the login UI entirely.
+  await page.context().storageState({ path: 'playwright/.auth/user.json' });
+});`,
+  },
+  {
+    id: "pw-061",
+    title: "Reuse saved auth state with test.use()",
+    description: "Load a saved storageState file so every test in the file starts already authenticated.",
+    framework: "playwright",
+    category: "auth",
+    tags: ["storageState", "test.use", "reuse session", "skip login"],
+    language: "typescript",
+    code: `import { test, expect } from '@playwright/test';
+
+// Apply the saved auth state to every test in this file.
+// The browser context starts pre-loaded with cookies and localStorage.
+test.use({ storageState: 'playwright/.auth/user.json' });
+
+test('accesses dashboard without going through login', async ({ page }) => {
+  // No login step — the context already carries a valid session
+  await page.goto('/dashboard');
+  await expect(page.getByTestId('user-menu')).toBeVisible();
+});
+
+test('accesses settings page directly', async ({ page }) => {
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-062",
+    title: "Login once for all tests with auth.setup.ts",
+    description: "Use a global setup project to authenticate once before the entire suite — the standard pattern for large test suites.",
+    framework: "playwright",
+    category: "auth",
+    tags: ["auth.setup", "global setup", "dependencies", "storageState", "project"],
+    language: "typescript",
+    code: `// ── playwright.config.ts ─────────────────────────────────────
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    {
+      name: 'setup',
+      testMatch: /auth\\.setup\\.ts/, // runs this file before all others
+    },
+    {
+      name: 'chromium',
+      use: { storageState: 'playwright/.auth/user.json' },
+      dependencies: ['setup'], // waits for setup to finish first
+    },
+  ],
+});
+
+// ── auth.setup.ts ─────────────────────────────────────────────
+import { test as setup } from '@playwright/test';
+
+setup('authenticate once for the whole suite', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('user@test.com');
+  await page.getByLabel('Password').fill('secret');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL('/dashboard');
+
+  // Write auth state — all chromium tests will load this automatically
+  await page.context().storageState({ path: 'playwright/.auth/user.json' });
+});`,
+  },
+  {
+    id: "pw-063",
+    title: "Abort a request to block third-party scripts",
+    description: "Drop matching outgoing requests before they're sent — keeps analytics and trackers out of test runs.",
+    framework: "playwright",
+    category: "network",
+    tags: ["route.abort", "block", "abort", "analytics", "third-party"],
+    language: "typescript",
+    code: `test('page works with analytics requests blocked', async ({ page }) => {
+  // route.abort() drops the request — the browser never sends it.
+  // Block analytics early so they don't pollute network logs or fire events.
+  await page.route(/google-analytics\\.com|segment\\.io|hotjar\\.com/, (route) => {
+    route.abort();
+  });
+
+  await page.goto('/home');
+
+  // The page should still render correctly without the blocked resources
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-064",
+    title: "Assert intercepted response body",
+    description: "Capture a real API response in-flight and assert its JSON structure matches the expected contract.",
+    framework: "playwright",
+    category: "network",
+    tags: ["waitForResponse", "response body", "json", "api contract", "assert"],
+    language: "typescript",
+    code: `test('users API response matches expected contract', async ({ page }) => {
+  // Start listening before navigation so we don't miss the request
+  const responsePromise = page.waitForResponse(
+    (res) => res.url().includes('/api/users') && res.status() === 200
+  );
+
+  await page.goto('/users');
+  const response = await responsePromise;
+  const body = await response.json();
+
+  // Assert the shape — catches backend contract breaks before the UI does
+  expect(body).toHaveProperty('users');
+  expect(Array.isArray(body.users)).toBe(true);
+  expect(body.users[0]).toMatchObject({
+    id: expect.any(Number),
+    email: expect.stringContaining('@'),
+  });
+});`,
+  },
+  {
+    id: "pw-065",
+    title: "Soft assertions — collect all failures",
+    description: "Use expect.soft() to continue the test after a failure and report all assertion errors together.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["soft assertions", "expect.soft", "non-blocking", "collect failures"],
+    language: "typescript",
+    code: `test('profile page shows all user fields correctly', async ({ page }) => {
+  await page.goto('/profile');
+
+  // expect.soft() records the failure but does NOT stop execution —
+  // all soft failures are reported together at the end of the test
+  await expect.soft(page.getByTestId('username')).toHaveText('Alice');
+  await expect.soft(page.getByTestId('email')).toHaveText('alice@test.com');
+  await expect.soft(page.getByTestId('role-badge')).toHaveText('Admin');
+  await expect.soft(page.getByTestId('plan-badge')).toHaveText('Pro');
+
+  // Hard assertion — if the modal doesn't open, there's no point continuing
+  await page.getByRole('button', { name: 'Edit profile' }).click();
+  await expect(page.getByTestId('edit-modal')).toBeVisible();
+});`,
+  },
+  {
+    id: "pw-066",
+    title: "Assert page title",
+    description: "Assert the document <title> using toHaveTitle() — retries automatically for pages with dynamic titles.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["toHaveTitle", "page title", "document title", "SEO"],
+    language: "typescript",
+    code: `test('page has the correct document title', async ({ page }) => {
+  await page.goto('/');
+
+  // toHaveTitle() retries until the <title> matches — handles async title updates
+  await expect(page).toHaveTitle('SnipQA — Playwright & Cypress Snippet Library');
+
+  // Regex — useful for titles with dynamic segments like counts or user names
+  await expect(page).toHaveTitle(/SnipQA/);
+
+  // After navigation, verify the title updated
+  await page.getByRole('link', { name: 'Pricing' }).click();
+  await expect(page).toHaveTitle(/Pricing/);
+});`,
+  },
+  {
+    id: "pw-067",
+    title: "Assert current URL",
+    description: "Assert the browser URL after navigation, form submission, or redirect using toHaveURL().",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["toHaveURL", "URL", "navigation", "redirect", "assert"],
+    language: "typescript",
+    code: `test('URL is correct after navigation and form submission', async ({ page }) => {
+  await page.goto('/login');
+
+  await page.getByLabel('Email').fill('user@test.com');
+  await page.getByLabel('Password').fill('secret');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  // toHaveURL() retries — handles async redirects from client-side routers
+  await expect(page).toHaveURL('/dashboard');
+
+  // Regex — use for dynamic segments like /users/123 or query strings
+  await expect(page).toHaveURL(/\\/dashboard/);
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await expect(page).toHaveURL(/\\/settings/);
+});`,
+  },
+  {
+    id: "pw-068",
+    title: "Assert input is disabled or enabled",
+    description: "Check whether a button or input is in a disabled or enabled state — common for form validation flows.",
+    framework: "playwright",
+    category: "assertions",
+    tags: ["toBeDisabled", "toBeEnabled", "disabled", "form validation"],
+    language: "typescript",
+    code: `test('submit button reflects form validity state', async ({ page }) => {
+  await page.goto('/register');
+
+  const submitBtn = page.getByRole('button', { name: 'Create account' });
+
+  // toBeDisabled() retries — safe to call right after navigation
+  await expect(submitBtn).toBeDisabled();
+
+  await page.getByLabel('Email').fill('qa@example.com');
+  await page.getByLabel('Password').fill('Str0ng!Pass');
+
+  // Form is now valid — button should become interactive
+  await expect(submitBtn).toBeEnabled();
+
+  // Also works on inputs — e.g. assert a field is read-only after lock
+  const emailField = page.getByLabel('Email');
+  await expect(emailField).not.toBeDisabled();
+});`,
+  },
+  {
+    id: "pw-069",
+    title: "Type into a contenteditable div",
+    description: "Interact with rich-text editors and contenteditable elements using pressSequentially().",
+    framework: "playwright",
+    category: "forms",
+    tags: ["contenteditable", "rich text", "editor", "pressSequentially"],
+    language: "typescript",
+    code: `test('types into a rich-text editor', async ({ page }) => {
+  await page.goto('/editor');
+
+  const editor = page.locator('[contenteditable="true"]');
+
+  // .fill() does not work on contenteditable elements — use click + pressSequentially
+  await editor.click();
+  await editor.pressSequentially('Hello, Playwright!');
+
+  // To replace existing content: select all then type the replacement
+  await editor.press('Control+a');
+  await editor.pressSequentially('Replaced content');
+
+  await expect(editor).toHaveText('Replaced content');
+});`,
+  },
+  {
+    id: "pw-070",
+    title: "beforeEach and afterEach hooks",
+    description: "Run setup and teardown logic before and after every test in a describe block.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["beforeEach", "afterEach", "hooks", "setup", "teardown"],
+    language: "typescript",
+    code: `import { test, expect } from '@playwright/test';
+
+test.describe('User settings', () => {
+  test.beforeEach(async ({ page }) => {
+    // Runs before every test — log in once per test
+    await page.goto('/login');
+    await page.getByLabel('Email').fill('user@test.com');
+    await page.getByLabel('Password').fill('secret');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL('/dashboard');
+  });
+
+  test.afterEach(async ({ page }) => {
+    // Runs after every test — clean up state that could leak
+    await page.evaluate(() => window.localStorage.clear());
+  });
+
+  test('can reach the settings page', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  });
+
+  test('can update display name', async ({ page }) => {
+    await page.goto('/settings');
+    await page.getByLabel('Display name').fill('New Name');
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Saved!')).toBeVisible();
+  });
+});`,
+  },
+  {
+    id: "pw-071",
+    title: "Group tests with test.describe",
+    description: "Use test.describe to group related tests, share hooks, and produce readable nested report output.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["test.describe", "group", "nested", "organisation"],
+    language: "typescript",
+    code: `import { test, expect } from '@playwright/test';
+
+// test.describe groups tests and scopes beforeEach/afterEach.
+// Report shows: "Checkout > with items > shows total price"
+test.describe('Checkout', () => {
+  test.describe('with items in the cart', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/cart?prefill=true');
+    });
+
+    test('shows the total price', async ({ page }) => {
+      await expect(page.getByTestId('cart-total')).toBeVisible();
+    });
+
+    test('applying a coupon reduces the total', async ({ page }) => {
+      await page.getByLabel('Coupon code').fill('SAVE10');
+      await page.getByRole('button', { name: 'Apply' }).click();
+      await expect(page.getByTestId('discount-row')).toBeVisible();
+    });
+  });
+
+  test('empty cart shows empty-state message', async ({ page }) => {
+    await page.goto('/cart');
+    await expect(page.getByTestId('empty-cart-message')).toBeVisible();
+  });
+});`,
+  },
+  {
+    id: "pw-072",
+    title: "Data-driven tests with a for loop",
+    description: "Generate one named test per data row by looping over an array with test() calls.",
+    framework: "playwright",
+    category: "fixtures",
+    tags: ["data-driven", "loop", "parametrize", "test.each", "for"],
+    language: "typescript",
+    code: `import { test, expect } from '@playwright/test';
+
+const plans = [
+  { name: 'Free',  price: '$0',  maxUsers: '1 user'   },
+  { name: 'Pro',   price: '$12', maxUsers: '5 users'  },
+  { name: 'Team',  price: '$49', maxUsers: '25 users' },
+];
+
+// Each iteration registers a separately named test —
+// report shows: "pricing card: Free", "pricing card: Pro", etc.
+for (const { name, price, maxUsers } of plans) {
+  test(\`pricing card: \${name}\`, async ({ page }) => {
+    await page.goto('/pricing');
+
+    const card = page.locator('[data-testid="pricing-card"]').filter({ hasText: name });
+    await expect(card.getByTestId('plan-price')).toHaveText(price);
+    await expect(card.getByTestId('plan-users')).toHaveText(maxUsers);
+  });
+}`,
+  },
+  {
+    id: "pw-073",
+    title: "Wait for URL to change after an action",
+    description: "Use waitForURL() or toHaveURL() to wait for client-side navigation to complete after a click or submit.",
+    framework: "playwright",
+    category: "wait",
+    tags: ["waitForURL", "toHaveURL", "navigation", "redirect", "SPA"],
+    language: "typescript",
+    code: `test('multi-step form advances the URL on each step', async ({ page }) => {
+  await page.goto('/onboarding/step-1');
+
+  await page.getByLabel('Company name').fill('Acme Corp');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  // waitForURL() blocks until the URL matches — safer than a fixed wait
+  await page.waitForURL('/onboarding/step-2');
+  await expect(page.getByRole('heading', { name: 'Step 2' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  // toHaveURL() is the retrying assertion equivalent — use it in expect chains
+  await expect(page).toHaveURL(/step-3/);
+});`,
+  },
+
+  // ── CYPRESS (continued) ──────────────────────────────────────
+  {
+    id: "cy-049",
+    title: "Select element by data-testid attribute",
+    description: "Use a CSS attribute selector to target data-testid — the most stable selector strategy for production suites.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["data-testid", "attribute selector", "stable selector", "get"],
+    language: "javascript",
+    code: `it('interacts with elements via data-testid', () => {
+  cy.visit('/dashboard');
+
+  // data-testid never breaks due to copy, style, or structure changes —
+  // the gold standard for resilient selectors
+  cy.get('[data-testid="user-menu"]').should('be.visible');
+  cy.get('[data-testid="logout-btn"]').click();
+
+  cy.url().should('include', '/login');
+});`,
+  },
+  {
+    id: "cy-050",
+    title: "cy.contains — find element by text",
+    description: "Locate elements by their visible text content — scope to a selector to avoid ambiguous matches.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["cy.contains", "text", "visible text", "partial match"],
+    language: "javascript",
+    code: `it('finds elements by visible text', () => {
+  cy.visit('/pricing');
+
+  // cy.contains(selector, text) scopes the search to a specific element type
+  cy.contains('button', 'Get started for free').click();
+
+  // Without a selector it searches all elements — good for quick assertions
+  cy.contains('Welcome to your dashboard').should('be.visible');
+
+  // Regex — case-insensitive partial match
+  cy.contains(/plan details/i).should('be.visible');
+});`,
+  },
+  {
+    id: "cy-051",
+    title: "Scope commands with .within()",
+    description: "Use .within() to constrain all cy.get() calls to a specific parent — prevents false positives when the same names appear in multiple forms.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["within", "scope", "parent", "form", "context"],
+    language: "javascript",
+    code: `it('fills billing and shipping forms independently', () => {
+  cy.visit('/checkout');
+
+  // .within() constrains all subsequent cy.get() calls to this element —
+  // prevents matching the same [name="email"] in both forms at once
+  cy.get('[data-testid="billing-form"]').within(() => {
+    cy.get('[name="first-name"]').type('Jane');
+    cy.get('[name="last-name"]').type('Doe');
+    cy.get('[name="postcode"]').type('SW1A 1AA');
+  });
+
+  cy.get('[data-testid="shipping-form"]').within(() => {
+    cy.get('[name="first-name"]').type('John');
+    cy.get('[name="postcode"]').type('EC1A 1BB');
+  });
+});`,
+  },
+  {
+    id: "cy-052",
+    title: "Narrow a matched set with .filter()",
+    description: "Use .filter() to keep only the elements in a matched set that satisfy a selector or text condition.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["filter", "contains", "narrow", "subset", "attribute"],
+    language: "javascript",
+    code: `it('targets only sale cards and express radio button', () => {
+  cy.visit('/products');
+
+  // .filter() keeps only elements matching the expression —
+  // uses standard jQuery selector syntax
+  cy.get('[data-testid="product-card"]')
+    .filter(':contains("On Sale")')
+    .should('have.length.greaterThan', 0)
+    .first()
+    .find('[data-testid="sale-badge"]')
+    .should('be.visible');
+
+  // Filter by attribute value
+  cy.visit('/checkout');
+  cy.get('input[type="radio"]')
+    .filter('[value="express"]')
+    .check()
+    .should('be.checked');
+});`,
+  },
+  {
+    id: "cy-053",
+    title: "CSS attribute selectors",
+    description: "Select elements using CSS attribute selectors — exact match, substring, prefix, and presence checks.",
+    framework: "cypress",
+    category: "selectors",
+    tags: ["attribute selector", "CSS", "contains", "starts-with", "required"],
+    language: "javascript",
+    code: `it('selects elements with various attribute patterns', () => {
+  cy.visit('/form');
+
+  // Attribute presence — all required fields
+  cy.get('input[required]').should('have.length.greaterThan', 0);
+
+  // Exact attribute value
+  cy.get('input[type="email"]').type('qa@example.com');
+
+  // Substring match (*=) — any class containing "btn-primary"
+  cy.get('[class*="btn-primary"]').first().click();
+
+  // Prefix match (^=) — data-testid starting with "card-"
+  cy.get('[data-testid^="card-"]').should('have.length', 6);
+
+  // Suffix match ($=) — href ending with ".pdf"
+  cy.get('a[href$=".pdf"]').should('exist');
+});`,
+  },
+  {
+    id: "cy-054",
+    title: "Reuse UI login session with cy.session()",
+    description: "Cache a UI-based login session so the login flow runs once per spec rather than before every test.",
+    framework: "cypress",
+    category: "auth",
+    tags: ["cy.session", "UI login", "cache", "session", "validate"],
+    language: "javascript",
+    code: `// cypress/support/commands.js
+Cypress.Commands.add('loginByUi', (email, password) => {
+  cy.session(
+    [email, password], // cache key — Cypress re-runs setup if this changes
+    () => {
+      cy.visit('/login');
+      cy.get('[name="email"]').type(email);
+      cy.get('[name="password"]').type(password);
+      cy.get('[type="submit"]').click();
+      cy.url().should('include', '/dashboard');
+    },
+    {
+      validate() {
+        // Re-authenticate automatically if this cookie is missing or expired
+        cy.getCookie('auth_token').should('exist');
+      },
+      cacheAcrossSpecs: true, // reuse the same session across all spec files
+    }
+  );
+});
+
+// Usage in any spec:
+// cy.loginByUi('user@test.com', 'secret');
+// cy.visit('/dashboard');`,
+  },
+  {
+    id: "cy-055",
+    title: "Login via API in beforeEach",
+    description: "Use a custom API login command in beforeEach — 10× faster than UI login and keeps tests independent.",
+    framework: "cypress",
+    category: "auth",
+    tags: ["beforeEach", "API login", "custom command", "auth", "fast login"],
+    language: "javascript",
+    code: `// cypress/support/commands.js
+Cypress.Commands.add('loginViaApi', (email, password) => {
+  // API login skips the UI entirely — much faster and more reliable
+  cy.request('POST', '/api/login', { email, password }).then(({ body }) => {
+    window.localStorage.setItem('auth_token', body.token);
+  });
+});
+
+// ── In any spec file ──────────────────────────────────────────
+describe('Protected pages', () => {
+  beforeEach(() => {
+    cy.loginViaApi('user@test.com', 'secret');
+    cy.visit('/dashboard');
+  });
+
+  it('shows the user menu', () => {
+    cy.get('[data-testid="user-menu"]').should('be.visible');
+  });
+
+  it('can access the settings page', () => {
+    cy.visit('/settings');
+    cy.get('h1').should('contain.text', 'Settings');
+  });
+});`,
+  },
+  {
+    id: "cy-056",
+    title: "Assert intercepted response body",
+    description: "Intercept a real API response, wait for it, then assert the body structure and values.",
+    framework: "cypress",
+    category: "network",
+    tags: ["intercept", "response body", "cy.wait", "api contract", "assert"],
+    language: "javascript",
+    code: `it('users API response matches the expected contract', () => {
+  // Alias the intercept so cy.wait() can reference it by name
+  cy.intercept('GET', '/api/users').as('getUsers');
+
+  cy.visit('/users');
+
+  cy.wait('@getUsers').then(({ response }) => {
+    // Assert on the actual response — catches backend contract breaks early
+    expect(response.statusCode).to.equal(200);
+    expect(response.body).to.have.property('users');
+    expect(response.body.users).to.be.an('array').with.length.greaterThan(0);
+    expect(response.body.users[0]).to.include.keys('id', 'email', 'role');
+  });
+});`,
+  },
+  {
+    id: "cy-057",
+    title: "Assert page title",
+    description: "Use cy.title() to retrieve the document title and chain assertions on it.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["cy.title", "page title", "document title", "SEO"],
+    language: "javascript",
+    code: `it('page has the correct document title', () => {
+  cy.visit('/');
+
+  // cy.title() returns document.title — chain .should() to assert it
+  cy.title().should('eq', 'SnipQA — Playwright & Cypress Snippet Library');
+
+  // Partial match with 'include'
+  cy.title().should('include', 'SnipQA');
+
+  // After navigating to another route, verify the title updated
+  cy.get('a[href="/pricing"]').click();
+  cy.title().should('include', 'Pricing');
+});`,
+  },
+  {
+    id: "cy-058",
+    title: "Assert current URL",
+    description: "Use cy.url() to retrieve the full current URL and assert it after navigation or redirect.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["cy.url", "URL", "location", "redirect", "navigation"],
+    language: "javascript",
+    code: `it('URL is correct after login redirect', () => {
+  cy.visit('/login');
+
+  cy.get('[name="email"]').type('user@test.com');
+  cy.get('[name="password"]').type('secret');
+  cy.get('[type="submit"]').click();
+
+  // cy.url() automatically retries — handles async redirects from SPAs
+  cy.url().should('include', '/dashboard');
+
+  // Exact match using baseUrl from cypress.config.js
+  cy.url().should('eq', Cypress.config('baseUrl') + '/dashboard');
+
+  // After further navigation
+  cy.get('a[href="/settings"]').click();
+  cy.url().should('match', /\\/settings/);
+});`,
+  },
+  {
+    id: "cy-059",
+    title: "Assert element is disabled or enabled",
+    description: "Check the disabled state of a button or input — commonly used to validate form readiness.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["disabled", "enabled", "be.disabled", "form validation", "button state"],
+    language: "javascript",
+    code: `it('submit button reflects form validity', () => {
+  cy.visit('/register');
+
+  // Assert disabled before the form is filled
+  cy.get('[type="submit"]').should('be.disabled');
+
+  cy.get('[name="email"]').type('qa@example.com');
+  cy.get('[name="password"]').type('Str0ng!Pass');
+
+  // Once valid, the button should become interactive
+  cy.get('[type="submit"]').should('not.be.disabled');
+
+  // Assert a read-only field is not editable
+  cy.get('[name="plan"]').should('be.disabled');
+});`,
+  },
+  {
+    id: "cy-060",
+    title: "Chain multiple assertions with .and()",
+    description: "Use .and() (alias for .should()) to assert multiple properties on the same element without re-querying.",
+    framework: "cypress",
+    category: "assertions",
+    tags: ["chained assertions", "and", "should", "multiple", "chain"],
+    language: "javascript",
+    code: `it('asserts several properties on the same element', () => {
+  cy.visit('/profile');
+
+  // .and() chains assertions on the same subject — no extra cy.get() calls
+  cy.get('[data-testid="plan-badge"]')
+    .should('be.visible')
+    .and('have.text', 'Pro')
+    .and('have.attr', 'data-plan', 'pro')
+    .and('have.class', 'badge-pro');
+
+  // Works on inputs too
+  cy.get('[name="email"]')
+    .should('be.visible')
+    .and('not.be.disabled')
+    .and('have.attr', 'type', 'email')
+    .and('have.value', 'user@test.com');
+});`,
+  },
+  {
+    id: "cy-061",
+    title: "Type into a contenteditable div",
+    description: "Use .type() with {selectall} to interact with rich-text editors and contenteditable elements.",
+    framework: "cypress",
+    category: "forms",
+    tags: ["contenteditable", "rich text", "editor", "selectall", "type"],
+    language: "javascript",
+    code: `it('types into a rich-text editor', () => {
+  cy.visit('/editor');
+
+  // {selectall} selects all existing content before typing the replacement —
+  // .clear() does not work on contenteditable elements
+  cy.get('[contenteditable="true"]')
+    .click()
+    .type('{selectall}Hello, Cypress!');
+
+  // Assert via invoke('text') — .should('have.value') doesn't work on div
+  cy.get('[contenteditable="true"]')
+    .invoke('text')
+    .should('include', 'Hello, Cypress!');
+});`,
+  },
+  {
+    id: "cy-062",
+    title: "beforeEach and afterEach hooks",
+    description: "Run shared setup before every test and cleanup after every test in a describe block.",
+    framework: "cypress",
+    category: "fixtures",
+    tags: ["beforeEach", "afterEach", "hooks", "setup", "teardown"],
+    language: "javascript",
+    code: `describe('User profile', () => {
+  beforeEach(() => {
+    // API login is faster than UI login — runs before every test
+    cy.request('POST', '/api/login', {
+      email: 'user@test.com',
+      password: 'secret',
+    }).then(({ body }) => {
+      window.localStorage.setItem('auth_token', body.token);
+    });
+    cy.visit('/profile');
+  });
+
+  afterEach(() => {
+    // Clear auth state between tests to prevent bleed-through
+    cy.clearLocalStorage();
+    cy.clearCookies();
+  });
+
+  it('shows the username', () => {
+    cy.get('[data-testid="username"]').should('be.visible');
+  });
+
+  it('can update the display name', () => {
+    cy.get('[name="display-name"]').clear().type('New Name');
+    cy.get('[type="submit"]').click();
+    cy.contains('Profile updated').should('be.visible');
+  });
+});`,
+  },
+  {
+    id: "cy-063",
+    title: "Assert and interact after a redirect",
+    description: "Verify that a form submission or link triggers a redirect, then assert the landing page rendered correctly.",
+    framework: "cypress",
+    category: "navigation",
+    tags: ["redirect", "navigation", "url", "login", "landing page"],
+    language: "javascript",
+    code: `it('redirects to dashboard after successful login', () => {
+  cy.visit('/login');
+
+  cy.get('[name="email"]').type('user@test.com');
+  cy.get('[name="password"]').type('secret');
+  cy.get('[type="submit"]').click();
+
+  // cy.url() retries automatically — handles async client-side redirects
+  cy.url().should('include', '/dashboard');
+
+  // Assert the landing page rendered correctly after the redirect
+  cy.get('[data-testid="welcome-banner"]').should('be.visible');
+  cy.get('[data-testid="user-menu"]').should('contain.text', 'user@test.com');
+});`,
+  },
+  {
+    id: "cy-064",
+    title: "Wait for URL to change after an action",
+    description: "Assert the URL after a button click or form submit — Cypress retries cy.url() automatically for SPA navigation.",
+    framework: "cypress",
+    category: "wait",
+    tags: ["url", "navigation", "SPA", "redirect", "timeout"],
+    language: "javascript",
+    code: `it('URL advances on each step of the onboarding flow', () => {
+  cy.visit('/onboarding/step-1');
+
+  cy.get('[name="company"]').type('Acme Corp');
+  cy.get('[type="submit"]').click();
+
+  // cy.url() retries — no explicit wait needed for most client-side navigations
+  cy.url().should('include', '/onboarding/step-2');
+  cy.get('h1').should('contain.text', 'Step 2');
+
+  cy.get('[type="submit"]').click();
+
+  // For slower SPAs, extend the timeout on the assertion
+  cy.url({ timeout: 10_000 }).should('include', '/onboarding/step-3');
+});`,
+  },
 ];
 
 export const categories: { value: Category | "all"; label: string }[] = [
