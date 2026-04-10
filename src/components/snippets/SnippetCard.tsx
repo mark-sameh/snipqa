@@ -11,27 +11,34 @@ export default function SnippetCard({ snippet }: Props) {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
+  const [voted, setVoted] = useState<"like" | "dislike" | null>(null);
 
-  const storageKey = `snipqa-votes-${snippet.id}`;
+  const countsKey = `snipqa-votes-${snippet.id}`;
+  const choiceKey = `snipqa-vote-${snippet.id}`;
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(storageKey);
+      const stored = localStorage.getItem(countsKey);
       if (stored) {
         const { likes: l, dislikes: d } = JSON.parse(stored);
         setLikes(l ?? 0);
         setDislikes(d ?? 0);
       }
+      const choice = localStorage.getItem(choiceKey);
+      if (choice === "like" || choice === "dislike") setVoted(choice);
     } catch {}
-  }, [storageKey]);
+  }, [countsKey, choiceKey]);
 
   const vote = (type: "like" | "dislike") => {
+    if (voted) return; // one vote per snippet per browser
     const next = type === "like"
       ? { likes: likes + 1, dislikes }
       : { likes, dislikes: dislikes + 1 };
-    if (type === "like") setLikes(next.likes);
-    else setDislikes(next.dislikes);
-    localStorage.setItem(storageKey, JSON.stringify(next));
+    setLikes(next.likes);
+    setDislikes(next.dislikes);
+    setVoted(type);
+    localStorage.setItem(countsKey, JSON.stringify(next));
+    localStorage.setItem(choiceKey, type);
   };
 
   const handleCopy = async () => {
@@ -43,6 +50,18 @@ export default function SnippetCard({ snippet }: Props) {
   const fwClass = snippet.framework === "playwright"
     ? "text-pw border-pw/30 bg-pw/10"
     : "text-cy border-cy/30 bg-cy/10";
+
+  const likeClass = voted === "like"
+    ? "border-green-500/50 bg-green-500/10 text-green-400"
+    : voted !== null
+    ? "border-border/40 text-text-dim/30 cursor-not-allowed"
+    : "border-border text-text-dim hover:border-accent hover:text-accent";
+
+  const dislikeClass = voted === "dislike"
+    ? "border-red-500/50 bg-red-500/10 text-red-400"
+    : voted !== null
+    ? "border-border/40 text-text-dim/30 cursor-not-allowed"
+    : "border-border text-text-dim hover:border-red-500 hover:text-red-400";
 
   return (
     <div className="group rounded-xl border border-border bg-surface p-5 transition-all hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 animate-slide-up">
@@ -90,14 +109,16 @@ export default function SnippetCard({ snippet }: Props) {
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           <button
             onClick={() => vote("like")}
-            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-dim transition-all hover:border-accent hover:text-accent"
+            disabled={voted !== null}
+            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-all ${likeClass}`}
           >
             <ThumbsUp size={13} />
             <span>{likes}</span>
           </button>
           <button
             onClick={() => vote("dislike")}
-            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs text-text-dim transition-all hover:border-red-500 hover:text-red-400"
+            disabled={voted !== null}
+            className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-all ${dislikeClass}`}
           >
             <ThumbsDown size={13} />
             <span>{dislikes}</span>
