@@ -11,48 +11,66 @@ export default function SnippetCard({ snippet }: Props) {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
+  // voted is per-device only — stored in localStorage, never sent to Supabase
   const [voted, setVoted] = useState<"like" | "dislike" | null>(null);
 
-  const countsKey = `snipqa-votes-${snippet.id}`;
   const choiceKey = `snipqa-vote-${snippet.id}`;
 
   useEffect(() => {
+    // Restore the user's personal vote choice from localStorage
     try {
-      const stored = localStorage.getItem(countsKey);
-      if (stored) {
-        const { likes: l, dislikes: d } = JSON.parse(stored);
-        setLikes(l ?? 0);
-        setDislikes(d ?? 0);
-      }
       const choice = localStorage.getItem(choiceKey);
       if (choice === "like" || choice === "dislike") setVoted(choice);
     } catch {}
-  }, [countsKey, choiceKey]);
 
-  const vote = (type: "like" | "dislike") => {
+    // Fetch global counts from Supabase via the API route
+    fetch(`/api/votes/${snippet.id}`)
+      .then((r) => r.json())
+      .then(({ likes: l, dislikes: d }) => {
+        if (typeof l === "number") setLikes(l);
+        if (typeof d === "number") setDislikes(d);
+      })
+      .catch(() => {}); // silently ignore — counts default to 0
+  }, [snippet.id, choiceKey]);
+
+  const vote = async (type: "like" | "dislike") => {
     // Clicking the opposite button while voted → do nothing
     if (voted !== null && voted !== type) return;
 
     if (voted === type) {
       // Toggle off: remove the vote
-      const next = type === "like"
-        ? { likes: likes - 1, dislikes }
-        : { likes, dislikes: dislikes - 1 };
+      const action = "remove";
+      const next = {
+        likes:    type === "like"    ? Math.max(0, likes    - 1) : likes,
+        dislikes: type === "dislike" ? Math.max(0, dislikes - 1) : dislikes,
+      };
       setLikes(next.likes);
       setDislikes(next.dislikes);
       setVoted(null);
-      localStorage.setItem(countsKey, JSON.stringify(next));
       localStorage.removeItem(choiceKey);
+
+      await fetch(`/api/votes/${snippet.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, action }),
+      });
     } else {
-      // Cast new vote
-      const next = type === "like"
-        ? { likes: likes + 1, dislikes }
-        : { likes, dislikes: dislikes + 1 };
+      // Cast a new vote
+      const action = "add";
+      const next = {
+        likes:    type === "like"    ? likes    + 1 : likes,
+        dislikes: type === "dislike" ? dislikes + 1 : dislikes,
+      };
       setLikes(next.likes);
       setDislikes(next.dislikes);
       setVoted(type);
-      localStorage.setItem(countsKey, JSON.stringify(next));
       localStorage.setItem(choiceKey, type);
+
+      await fetch(`/api/votes/${snippet.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, action }),
+      });
     }
   };
 
