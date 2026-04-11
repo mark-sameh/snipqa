@@ -11,6 +11,7 @@ export default function SnippetCard({ snippet }: Props) {
   const [copied, setCopied] = useState(false);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
+  const [copies, setCopies] = useState(0);
   // voted is per-device only — stored in localStorage, never sent to Supabase
   const [voted, setVoted] = useState<"like" | "dislike" | null>(null);
 
@@ -23,15 +24,32 @@ export default function SnippetCard({ snippet }: Props) {
       if (choice === "like" || choice === "dislike") setVoted(choice);
     } catch {}
 
-    // Fetch global counts from Supabase via the API route
+    // Fetch global counts (likes, dislikes, copies) from Supabase via API
     fetch(`/api/votes/${snippet.id}`)
       .then((r) => r.json())
-      .then(({ likes: l, dislikes: d }) => {
+      .then(({ likes: l, dislikes: d, copies: c }) => {
         if (typeof l === "number") setLikes(l);
         if (typeof d === "number") setDislikes(d);
+        if (typeof c === "number") setCopies(c);
       })
-      .catch(() => {}); // silently ignore — counts default to 0
+      .catch(() => {});
   }, [snippet.id, choiceKey]);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(snippet.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+
+    // Increment global copy counter silently — no await, fire and forget
+    fetch(`/api/votes/${snippet.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "copy" }),
+    })
+      .then((r) => r.json())
+      .then(({ copies: c }) => { if (typeof c === "number") setCopies(c); })
+      .catch(() => {});
+  };
 
   const vote = async (type: "like" | "dislike") => {
     // Clicking the opposite button while voted → do nothing
@@ -39,7 +57,6 @@ export default function SnippetCard({ snippet }: Props) {
 
     if (voted === type) {
       // Toggle off: remove the vote
-      const action = "remove";
       const next = {
         likes:    type === "like"    ? Math.max(0, likes    - 1) : likes,
         dislikes: type === "dislike" ? Math.max(0, dislikes - 1) : dislikes,
@@ -52,11 +69,10 @@ export default function SnippetCard({ snippet }: Props) {
       await fetch(`/api/votes/${snippet.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, action }),
+        body: JSON.stringify({ type, action: "remove" }),
       });
     } else {
       // Cast a new vote
-      const action = "add";
       const next = {
         likes:    type === "like"    ? likes    + 1 : likes,
         dislikes: type === "dislike" ? dislikes + 1 : dislikes,
@@ -69,15 +85,9 @@ export default function SnippetCard({ snippet }: Props) {
       await fetch(`/api/votes/${snippet.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, action }),
+        body: JSON.stringify({ type, action: "add" }),
       });
     }
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(snippet.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const fwClass = snippet.framework === "playwright"
@@ -111,11 +121,16 @@ export default function SnippetCard({ snippet }: Props) {
           <h3 className="font-display text-base font-600 text-text">{snippet.title}</h3>
           <p className="mt-1 text-sm text-text-dim leading-snug">{snippet.description}</p>
         </div>
+
+        {/* Copy button with muted copy count badge */}
         <button
           onClick={handleCopy}
-          className="flex-shrink-0 rounded-lg border border-border p-2 text-text-dim transition-all hover:border-accent hover:text-accent"
+          className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-text-dim transition-all hover:border-accent hover:text-accent"
         >
           {copied ? <Check size={15} className="text-accent" /> : <Copy size={15} />}
+          {copies > 0 && (
+            <span className="font-mono text-[11px] text-muted">{copies}</span>
+          )}
         </button>
       </div>
 
