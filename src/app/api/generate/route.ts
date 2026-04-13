@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing prompt or framework" }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "API key not configured" }, { status: 500 });
   }
@@ -25,20 +25,18 @@ Rules:
 - Keep it concise but complete — include imports when necessary`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 1000 },
+        }),
+      }
+    );
 
     const data = await response.json();
 
@@ -46,7 +44,7 @@ Rules:
       return NextResponse.json({ error: data.error?.message || "API error" }, { status: 500 });
     }
 
-    const snippet = data.content?.[0]?.text ?? "";
+    const snippet = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
     return NextResponse.json({ snippet });
   } catch {
     return NextResponse.json({ error: "Failed to reach AI service" }, { status: 500 });
